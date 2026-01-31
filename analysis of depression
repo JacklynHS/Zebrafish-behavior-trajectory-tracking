@@ -1,0 +1,121 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+from google.colab import drive
+
+# --------------------------------------------------
+# Mount Google Drive
+# --------------------------------------------------
+drive.mount('/content/drive')
+
+
+# --------------------------------------------------
+# Zebrafish behavior analysis function
+# --------------------------------------------------
+def analyze_zebrafish(csv_path, video_width, video_height, fps=30):
+    """
+    Analyze zebrafish dwell time and movement behavior.
+
+    Parameters
+    ----------
+    csv_path : str
+        Path to the tracking output CSV file.
+    video_width : int
+        Video width in pixels.
+    video_height : int
+        Video height in pixels.
+    fps : int, optional
+        Frames per second of the video (default = 30).
+    """
+
+    # Check file existence
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"File not found: {csv_path}")
+
+    # Load CSV
+    df = pd.read_csv(csv_path)
+
+    # Check required columns
+    if not {"CenterX", "CenterY"}.issubset(df.columns):
+        raise ValueError("CSV file must contain 'CenterX' and 'CenterY' columns")
+
+    # Define center region (central 50% of arena)
+    center_x_min = video_width * 0.25
+    center_x_max = video_width * 0.75
+    center_y_min = video_height * 0.25
+    center_y_max = video_height * 0.75
+
+    def in_center(x, y):
+        return (
+            center_x_min <= x <= center_x_max and
+            center_y_min <= y <= center_y_max
+        )
+
+    df["InCenter"] = df.apply(
+        lambda row: in_center(row["CenterX"], row["CenterY"]),
+        axis=1
+    )
+
+    # Calculate dwell time
+    frame_time = 1 / fps
+    time_in_center = df["InCenter"].sum() * frame_time
+    time_in_edge = (~df["InCenter"]).sum() * frame_time
+    total_time = len(df) * frame_time
+
+    print("\nAnalysis Results")
+    print(f"Time in center: {time_in_center:.2f} s ({time_in_center / total_time:.1%})")
+    print(f"Time at edges:  {time_in_edge:.2f} s ({time_in_edge / total_time:.1%})")
+    print(f"Total time:     {total_time:.2f} s")
+
+    # --------------------------------------------------
+    # Trajectory plot
+    # --------------------------------------------------
+    plt.figure(figsize=(8, 6))
+    plt.plot(df["CenterX"], df["CenterY"], color="blue", alpha=0.7, linewidth=1)
+    plt.gca().invert_yaxis()  # Image coordinate system (Y-axis downward)
+    plt.title("Zebrafish Movement Trajectory")
+    plt.xlabel("X (pixels)")
+    plt.ylabel("Y (pixels)")
+    plt.show()
+
+    # --------------------------------------------------
+    # Heatmap (spatial occupancy)
+    # --------------------------------------------------
+    plt.figure(figsize=(8, 6))
+    heatmap, _, _ = np.histogram2d(
+        df["CenterX"],
+        df["CenterY"],
+        bins=50,
+        range=[[0, video_width], [0, video_height]]
+    )
+
+    sns.heatmap(
+        np.flipud(heatmap.T),
+        cmap="jet",
+        cbar=True
+    )
+    plt.title("Zebrafish Spatial Occupancy Heatmap")
+    plt.xlabel("X (pixels)")
+    plt.ylabel("Y (pixels)")
+    plt.show()
+
+    return {
+        "time_in_center": time_in_center,
+        "time_in_edge": time_in_edge,
+        "total_time": total_time,
+        "trajectory": df
+    }
+
+csv_path = input(
+    "Please enter the path to the tracking CSV file:\n"
+    "(e.g., /content/drive/MyDrive/Project/Zebrafish/...)\n> "
+)
+
+result = analyze_zebrafish(
+    csv_path=csv_path,
+    video_width=248,    # change to your video width
+    video_height=248,   # change to your video height
+    fps=200             # change to your video FPS
+)
