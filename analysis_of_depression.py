@@ -5,15 +5,10 @@ import seaborn as sns
 import os
 from google.colab import drive
 
-# --------------------------------------------------
 # Mount Google Drive
-# --------------------------------------------------
 drive.mount('/content/drive')
 
-
-# --------------------------------------------------
 # Zebrafish behavior analysis function
-# --------------------------------------------------
 def analyze_zebrafish(csv_path, video_width, video_height, fps=30):
     """
     Analyze zebrafish dwell time and movement behavior.
@@ -69,9 +64,7 @@ def analyze_zebrafish(csv_path, video_width, video_height, fps=30):
     print(f"Time at edges:  {time_in_edge:.2f} s ({time_in_edge / total_time:.1%})")
     print(f"Total time:     {total_time:.2f} s")
 
-    # --------------------------------------------------
     # Trajectory plot
-    # --------------------------------------------------
     plt.figure(figsize=(8, 6))
     plt.plot(df["CenterX"], df["CenterY"], color="blue", alpha=0.7, linewidth=1)
     plt.gca().invert_yaxis()  # Image coordinate system (Y-axis downward)
@@ -80,9 +73,7 @@ def analyze_zebrafish(csv_path, video_width, video_height, fps=30):
     plt.ylabel("Y (pixels)")
     plt.show()
 
-    # --------------------------------------------------
     # Heatmap (spatial occupancy)
-    # --------------------------------------------------
     plt.figure(figsize=(8, 6))
     heatmap, _, _ = np.histogram2d(
         df["CenterX"],
